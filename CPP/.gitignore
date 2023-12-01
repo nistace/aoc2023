@@ -1,0 +1,5 @@
+.idea
+*.sln
+*.vcxproj
+*.vcxproj.filters
+x64
