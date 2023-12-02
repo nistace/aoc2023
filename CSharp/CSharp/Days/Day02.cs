@@ -14,7 +14,10 @@ namespace AOC23.Days {
 		}
 
 		public static string Part2() {
-			return $"";
+			var games = Utils.ReadAllLines(2).Select(t => Game.TryParse(t, out var game) ? (true, game) : (false, null)).Where(t => t.Item1).Select(t => t.Item2);
+			var gamePowers = games.Select(game => ((CubeColor[])Enum.GetValues(typeof(CubeColor))).Select(color => game.RevealedSets.Max(set => set[color])).Aggregate(1, (acc, val) => acc * val));
+			var powerSum = gamePowers.Sum();
+			return $"{powerSum}";
 		}
 
 		public enum CubeColor {
