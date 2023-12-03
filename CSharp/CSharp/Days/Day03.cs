@@ -13,7 +13,11 @@ namespace AOC23.Days {
 		}
 
 		public static string Part2() {
-			return $"";
+			var inputLines = Utils.ReadAllLines(3).ToArray();
+			var potentialGears = FindSpecialCharacters(inputLines).Where(t => t.Character == '*');
+			var numbers = FindNumbers(inputLines);
+			var gearAdjacentNumbers = potentialGears.Select(gear => numbers.Where(gear.IsNeighbouring).ToArray()).Where(t => t.Length == 2);
+			return $"{gearAdjacentNumbers.Sum(t => t.Aggregate(1, (cur, next) => cur * next.Value))}";
 		}
 
 		private static HashSet<SpecialCharacter> FindSpecialCharacters(IReadOnlyList<string> inputLines) {
@@ -57,7 +61,7 @@ namespace AOC23.Days {
 		}
 
 		private readonly struct SpecialCharacter {
-			private char Character { get; }
+			public char Character { get; }
 			private int Line { get; }
 			private int Row { get; }
 
