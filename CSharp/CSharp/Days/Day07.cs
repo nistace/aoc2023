@@ -10,11 +10,14 @@ namespace AOC23.Days {
 		}
 
 		public static string Part2() {
-			return $"";
+			var handBids = Utils.ReadAllLines(7).Where(t => !string.IsNullOrEmpty(t)).Select(t => t.Split(' ')).Select(t => new HandBid(t[0], int.Parse(t[1]), true));
+			var orderedHandBidsAndRanks = handBids.OrderBy(t => t.TypeScore).ThenBy(t => t.LabelScore).Select((t, i) => (handBid: t, rank: i + 1)).ToArray();
+			return $"{orderedHandBidsAndRanks.Select(t => (long)t.handBid.Bid * t.rank).Sum()}";
 		}
 
 		private class HandBid {
 			private const string orderedFigures = "23456789TJQKA";
+			private const string orderedFiguresWithJokers = "J23456789TQKA";
 
 			private static IReadOnlyList<int[]> typesConfigs { get; } = new List<int[]> {
 				new[] { 5 },
@@ -25,29 +28,37 @@ namespace AOC23.Days {
 				new[] { 2 }
 			};
 
-			private string Hand { get; }
 			public int Bid { get; }
 			public int TypeScore { get; }
 			public long LabelScore { get; }
 
-			public HandBid(string hand, int bid) {
-				Hand = hand;
+			public HandBid(string hand, int bid, bool withJokers = false) {
 				var cardsInHand = hand.ToList();
 				var cardsCounts = cardsInHand.Distinct().ToDictionary(t => t, t => cardsInHand.Count(card => card == t));
-				TypeScore = EvaluateHandTypeScore(cardsCounts);
+				TypeScore = EvaluateHandTypeScore(cardsCounts, withJokers);
 				Bid = bid;
-				LabelScore = long.Parse(string.Join("", cardsInHand.Select(t => $"{orderedFigures.IndexOf(t):00}")));
+				var labelScoreOrderedFigures = withJokers ? orderedFiguresWithJokers : orderedFigures;
+				LabelScore = long.Parse(string.Join("", cardsInHand.Select(t => $"{labelScoreOrderedFigures.IndexOf(t):00}")));
 			}
 
-			private static int EvaluateHandTypeScore(IReadOnlyDictionary<char, int> figureCounts) {
+			private static int EvaluateHandTypeScore(IReadOnlyDictionary<char, int> figureCounts, bool withJokers) {
 				for (var typeIndex = 0; typeIndex < typesConfigs.Count; ++typeIndex) {
-					if (IsType(figureCounts, typesConfigs[typeIndex])) return typesConfigs.Count - typeIndex;
+					if (IsType(figureCounts, typesConfigs[typeIndex], withJokers)) return typesConfigs.Count - typeIndex;
 				}
 				return 0;
 			}
 
-			private static bool IsType(IReadOnlyDictionary<char, int> figureCounts, IEnumerable<int> typeConfig) {
+			private static bool IsType(IReadOnlyDictionary<char, int> figureCounts, IEnumerable<int> typeConfig, bool withJokers) {
 				var usedFigures = new HashSet<char>();
+				if (withJokers) {
+					var jokers = figureCounts.TryGetValue('J', out var numberOfJokers) ? numberOfJokers : 0;
+					if (jokers < 5) {
+						var modifiedDictionary = figureCounts.Where(t => t.Key != 'J').ToDictionary(t => t.Key, t => t.Value);
+						var max = modifiedDictionary.Values.Max();
+						modifiedDictionary[modifiedDictionary.Keys.FirstOrDefault(t => modifiedDictionary[t] == max)] += jokers;
+						figureCounts = modifiedDictionary;
+					}
+				}
 				foreach (var figureCount in typeConfig) {
 					var satisfyingFigure = figureCounts.FirstOrDefault(t => !usedFigures.Contains(t.Key) && t.Value == figureCount);
 					if (satisfyingFigure.Key == default) return false;
@@ -55,8 +66,6 @@ namespace AOC23.Days {
 				}
 				return true;
 			}
-
-			public override string ToString() => $"{Hand}\t{Bid}\t{TypeScore}\t{LabelScore}";
 		}
 	}
 }
