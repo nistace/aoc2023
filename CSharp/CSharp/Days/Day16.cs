@@ -4,15 +4,26 @@ using System.Linq;
 
 namespace AOC23.Days {
 	public static class Day16 {
-		public static string Part1() {
-			var grid = ParseGrid(Utils.ReadAllLines(16));
-			var visitedCells = new Dictionary<(int x, int y), HashSet<Direction>>();
-			PropagateBeam((0, 0), Direction.Right, grid, ref visitedCells);
-			return $"{visitedCells.Count}";
-		}
+		public static string Part1() => $"{CountVisitedCellsStartingFrom((0, 0), Direction.Right, ParseGrid(Utils.ReadAllLines(16)))}";
 
 		public static string Part2() {
-			return "";
+			var grid = ParseGrid(Utils.ReadAllLines(16));
+			var max = 0;
+			for (var x = 0; x < grid.Width; ++x) {
+				max = Math.Max(max, CountVisitedCellsStartingFrom((x, 0), Direction.Down, grid));
+				max = Math.Max(max, CountVisitedCellsStartingFrom((x, grid.Height - 1), Direction.Up, grid));
+			}
+			for (var y = 0; y < grid.Height; ++y) {
+				max = Math.Max(max, CountVisitedCellsStartingFrom((0, y), Direction.Right, grid));
+				max = Math.Max(max, CountVisitedCellsStartingFrom((grid.Width - 1, y), Direction.Left, grid));
+			}
+			return $"{max}";
+		}
+
+		private static int CountVisitedCellsStartingFrom((int x, int y) coordinates, Direction direction, Grid grid) {
+			var visitedCells = new Dictionary<(int x, int y), HashSet<Direction>>();
+			PropagateBeam(coordinates, direction, grid, ref visitedCells);
+			return visitedCells.Count;
 		}
 
 		private static void PropagateBeam((int x, int y) coordinates, Direction direction, Grid grid, ref Dictionary<(int x, int y), HashSet<Direction>> visitedCells) {
@@ -49,8 +60,8 @@ namespace AOC23.Days {
 
 		private class Grid {
 			public IReadOnlyDictionary<(int x, int y), Cell> Cells { get; }
-			private int Width { get; }
-			private int Height { get; }
+			public int Width { get; }
+			public int Height { get; }
 
 			public Grid(IReadOnlyDictionary<(int x, int y), Cell> cells) {
 				Cells = cells.ToDictionary(t => t.Key, t => t.Value);
