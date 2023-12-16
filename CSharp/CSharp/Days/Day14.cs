@@ -6,15 +6,29 @@ namespace AOC23.Days {
 	public static class Day14 {
 		public static string Part1() {
 			var grid = Grid.Parse(Utils.ReadAllLines(14).ToArray());
-			Console.WriteLine(grid);
 			grid.SlideNorth();
-			Console.WriteLine();
-			Console.WriteLine(grid);
 			return $"{grid.TotalLoad}";
 		}
 
 		public static string Part2() {
-			return "";
+			var grid = Grid.Parse(Utils.ReadAllLines(14).ToArray());
+			return $"{EvaluatePostCycleTotalLoad(grid, 1000000000L)}";
+		}
+
+		private static long EvaluatePostCycleTotalLoad(Grid grid, long cyclesToSimulate) {
+			var dispositionScores = new List<long>();
+			var totalLoads = new List<long>();
+			while (true) {
+				grid.DoCycle();
+				var currentDispositionScore = grid.DispositionScore;
+				if (dispositionScores.Contains(currentDispositionScore)) {
+					var preCycleLength = dispositionScores.IndexOf(currentDispositionScore);
+					var cycleLength = dispositionScores.Count - preCycleLength;
+					return totalLoads[(int)(preCycleLength + (cyclesToSimulate - preCycleLength - 1) % cycleLength)];
+				}
+				dispositionScores.Add(currentDispositionScore);
+				totalLoads.Add(grid.TotalLoad);
+			}
 		}
 
 		private class Grid {
@@ -22,6 +36,7 @@ namespace AOC23.Days {
 			private int Width { get; }
 			private int Height { get; }
 			public long TotalLoad => Content.Where(t => t.Value == 'O').Sum(t => Height - t.Key.y);
+			public long DispositionScore => Content.Where(t => t.Value == 'O').Sum(t => Width * (Height - t.Key.y) + (Width - t.Key.x));
 
 			private Grid(Dictionary<(int x, int y), char> gridContent) {
 				Content = gridContent;
@@ -32,15 +47,27 @@ namespace AOC23.Days {
 			public static Grid Parse(IEnumerable<string> inputLines) =>
 				new Grid(inputLines.SelectMany((row, y) => row.Select((c, x) => (coord: (x, y), c)).Where(t => t.c != '.')).ToDictionary(t => t.coord, t => t.c));
 
-			public void SlideNorth() {
+			public void DoCycle() {
+				SlideNorth();
+				SlideWest();
+				SlideSouth();
+				SlideEast();
+			}
+
+			public void SlideNorth() => Slide(coord => coord.x, coord => coord.y, Height, (f, m) => (f, m), -1);
+			private void SlideSouth() => Slide(coord => coord.x, coord => coord.y, Height, (f, m) => (f, m), 1);
+			private void SlideWest() => Slide(coord => coord.y, coord => coord.x, Width, (f, m) => (m, f), -1);
+			private void SlideEast() => Slide(coord => coord.y, coord => coord.x, Width, (f, m) => (m, f), 1);
+
+			private void Slide(Func<(int x, int y), int> toFixedValue, Func<(int x, int y), int> toMovingValue, int movingAxisSize, Func<int, int, (int, int)> toCoord, int delta) {
 				foreach (var itemInGrid in Content.Where(t => t.Value == 'O').ToArray()) {
-					var x = itemInGrid.Key.x;
-					var emptyY = -1;
-					for (var y = itemInGrid.Key.y - 1; y >= 0 && GetChar((x, y)) != '#'; --y) {
-						if (GetChar((x, y)) == '.') emptyY = y;
+					var f = toFixedValue(itemInGrid.Key);
+					var emptyM = -1;
+					for (var m = toMovingValue(itemInGrid.Key) + delta; m >= 0 && m < movingAxisSize && GetChar(toCoord(f, m)) != '#'; m += delta) {
+						if (GetChar(toCoord(f, m)) == '.') emptyM = m;
 					}
-					if (emptyY >= 0) {
-						Content.Add((x, emptyY), 'O');
+					if (emptyM >= 0) {
+						Content.Add(toCoord(f, emptyM), 'O');
 						Content.Remove(itemInGrid.Key);
 					}
 				}
